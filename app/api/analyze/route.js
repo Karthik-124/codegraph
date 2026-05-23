@@ -4,41 +4,33 @@
 //
 // Node types:  file | function | class | import
 // Edge types:  contains | calls | imports | extends
+//
+// Token budget: Groq free tier is 12,000 TPM for llama-3.3-70b-versatile.
+// We keep well under that by: capping files at 25, lines per file at 60,
+// and using a concise system prompt.
 
 import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// the system message tells the model exactly what JSON shape to return
-const SYSTEM_PROMPT = `You are a code analysis engine. 
-Given source files from a GitHub repository, analyse the code and return ONLY valid JSON with this exact shape:
+// max files and lines we'll include in the prompt — keeps us under 12k TPM
+const MAX_FILES_TO_ANALYSE = 25;
+const MAX_LINES_PER_FILE   = 60;
+
+// concise system prompt — every token saved here is a token for actual code
+const SYSTEM_PROMPT = `You are a code analysis engine. Analyse the given source files and return ONLY valid JSON:
 
 {
   "nodes": [
-    {
-      "id": "unique_string",
-      "label": "display name",
-      "type": "file | function | class | import",
-      "file": "path/to/file.js",
-      "description": "one sentence about what this does"
-    }
+    { "id": "unique_id", "label": "name", "type": "file|function|class|import", "file": "path", "description": "one sentence" }
   ],
   "edges": [
-    {
-      "source": "node_id",
-      "target": "node_id",
-      "type": "contains | calls | imports | extends"
-    }
+    { "source": "id", "target": "id", "type": "contains|calls|imports|extends" }
   ],
-  "summary": "2-3 sentence summary of what the codebase does overall"
+  "summary": "2-3 sentences about what this codebase does"
 }
 
-Rules:
-- Every file gets exactly one node with type "file".
-- Extract the top-level functions, classes, and significant imports from each file.
-- Keep node count under 80 total — group trivial helpers under their parent file if needed.
-- Edge source/target must reference existing node IDs.
-- Return ONLY the JSON object — no prose, no markdown fences.`;
+Rules: one node per file (type=file); extract key functions/classes/imports; max 60 nodes total; edge source/target must exist; return ONLY the JSON, no markdown.`;
 
 export async function POST(request) {
   const { files, owner, repo } = await request.json();
@@ -47,26 +39,36 @@ export async function POST(request) {
     return Response.json({ error: 'No files provided' }, { status: 400 });
   }
 
-  // build a compact representation of the code to send to Groq
-  // we truncate each file to 120 lines so the prompt fits in the context window
-  const codeBlock = files
+  // take only the first N files to stay within the token budget
+  const filesToAnalyse = files.slice(0, MAX_FILES_TO_ANALYSE);
+
+  // truncate each file to MAX_LINES_PER_FILE — enough to understand structure
+  const codeBlock = filesToAnalyse
     .map(({ path, content }) => {
-      const lines = content.split('\n').slice(0, 120).join('\n');
-      return `// === FILE: ${path} ===\n${lines}`;
+      const lines = content.split('\n').slice(0, MAX_LINES_PER_FILE).join('\n');
+      return `// FILE: ${path}\n${lines}`;
     })
     .join('\n\n');
 
-  const userMessage = `Repository: ${owner}/${repo}\n\nFiles:\n\n${codeBlock}`;
+  const userMessage = `Repo: ${owner}/${repo}\n\n${codeBlock}`;
+
+  // rough token estimate — warn in console if we're getting close to the limit
+  const estimatedTokens = Math.ceil((SYSTEM_PROMPT.length + userMessage.length) / 4);
+  console.log(`[analyze] ~${estimatedTokens} tokens estimated for ${filesToAnalyse.length} files`);
+
+  if (estimatedTokens > 11000) {
+    console.warn('[analyze] token estimate is high — truncation may be needed');
+  }
 
   try {
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model:       'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
-      temperature: 0.1,   // low temp → more deterministic JSON output
-      max_tokens: 4096,
+      temperature: 0.1,   // low temp → deterministic JSON output
+      max_tokens:  3000,  // leave headroom within the TPM window
     });
 
     const raw = completion.choices[0]?.message?.content ?? '';
@@ -78,14 +80,13 @@ export async function POST(request) {
     try {
       graph = JSON.parse(cleaned);
     } catch {
-      console.error('Groq returned non-JSON:', raw.slice(0, 300));
+      console.error('[analyze] Groq returned non-JSON:', raw.slice(0, 300));
       return Response.json(
         { error: 'Model returned malformed JSON. Try a smaller repo.' },
         { status: 500 }
       );
     }
 
-    // sanity-check the shape before returning
     if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
       return Response.json(
         { error: 'Unexpected response shape from model.' },
@@ -95,10 +96,14 @@ export async function POST(request) {
 
     return Response.json(graph);
   } catch (err) {
-    console.error('Groq API error:', err.message);
-    return Response.json(
-      { error: 'Groq API error: ' + err.message },
-      { status: 500 }
-    );
+    console.error('[analyze] Groq API error:', err.message);
+
+    // surface a friendlier message for the common token-limit error
+    const isTokenError = err.message?.includes('413') || err.message?.includes('rate_limit');
+    const userMessage2 = isTokenError
+      ? 'Repository is too large for the free Groq tier. Try a smaller repo (under ~30 files).'
+      : 'Groq API error: ' + err.message;
+
+    return Response.json({ error: userMessage2 }, { status: 500 });
   }
 }
