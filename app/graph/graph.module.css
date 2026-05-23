@@ -1,0 +1,146 @@
+/* ── full-screen shell for the graph explorer ── */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* ── top navigation bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 12px;
+  z-index: 10;
+}
+
+.repoInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── body below the topbar — graph + chat side by side ── */
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* graph canvas takes all remaining width */
+.graphArea {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── centered wrapper for loading / error screens ── */
+.centered {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-base);
+}
+
+/* ── loading / error card ── */
+.loadCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 48px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-glow);
+  animation: fadeIn 0.4s ease;
+}
+
+.loadLogo {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.loadTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.loadRepo {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* ── loading steps list ── */
+.steps {
+  list-style: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex-shrink: 0;
+}
+
+/* done — filled green dot */
+.stepDone {
+  color: #10b981;
+}
+.stepDone .stepDot {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+/* active — pulsing purple */
+.stepActive {
+  color: var(--text-primary);
+}
+.stepActive .stepDot {
+  background: var(--accent-1);
+  border-color: var(--accent-1);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* pending — dim */
+.stepPending {
+  color: var(--text-muted);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
