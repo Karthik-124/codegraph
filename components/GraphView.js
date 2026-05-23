@@ -63,53 +63,79 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
         // ── visual style ──────────────────────────────────────────────
         style: [
           {
+            // base style for all nodes — no label by default to avoid clutter
             selector: 'node',
             style: {
-              'background-color':   (el) => NODE_COLORS[el.data('type')] ?? '#7c3aed',
-              'label':              'data(label)',
-              'color':              '#f0f0ff',
-              'font-size':          10,
-              'font-family':        'Inter, system-ui, sans-serif',
-              'text-valign':        'bottom',
-              'text-margin-y':      6,
-              'width':              (el) => el.data('type') === 'file' ? 28 : 18,
-              'height':             (el) => el.data('type') === 'file' ? 28 : 18,
-              'border-width':       2,
-              'border-color':       'rgba(255,255,255,0.15)',
-              'border-opacity':     1,
-              'text-max-width':     80,
-              'text-wrap':          'ellipsis',
+              'background-color': (el) => NODE_COLORS[el.data('type')] ?? '#7c3aed',
+              'label':            '',          // hidden by default
+              'color':            '#e0e0ff',
+              'font-size':        9,
+              'font-family':      'Inter, system-ui, sans-serif',
+              'font-weight':      '500',
+              'text-valign':      'bottom',
+              'text-halign':      'center',
+              'text-margin-y':    5,
+              'text-max-width':   70,
+              'text-wrap':        'ellipsis',
+              // semi-transparent background behind the text so it doesn't bleed
+              'text-background-color':   '#0a0a0f',
+              'text-background-opacity': 0.75,
+              'text-background-padding': '2px',
+              'width':            (el) => el.data('type') === 'file' ? 26 : 16,
+              'height':           (el) => el.data('type') === 'file' ? 26 : 16,
+              'border-width':     1.5,
+              'border-color':     'rgba(255,255,255,0.12)',
+              'border-opacity':   1,
             },
           },
           {
-            // highlight the selected node with a white ring
+            // file nodes always show their label — they're the main landmarks
+            selector: 'node[type = "file"]',
+            style: {
+              'label':    'data(label)',
+              'font-size': 9,
+            },
+          },
+          {
+            // selected node — white ring and always show its label
             selector: 'node:selected',
             style: {
-              'border-width': 3,
-              'border-color': '#ffffff',
+              'label':         'data(label)',
+              'font-size':     10,
+              'border-width':  3,
+              'border-color':  '#ffffff',
               'border-opacity': 1,
             },
           },
           {
-            // dim unconnected nodes when something is selected
+            // nodes with the .hovered class show their label on mouseover
+            selector: 'node.hovered',
+            style: {
+              'label':        'data(label)',
+              'font-size':    10,
+              'border-color': '#ffffff55',
+            },
+          },
+          {
+            // dim everything not in the selected neighbourhood
             selector: 'node.faded',
-            style: { opacity: 0.25 },
+            style: { opacity: 0.2 },
           },
           {
             selector: 'edge',
             style: {
-              'line-color':       (el) => EDGE_STYLES[el.data('type')]?.lineColor ?? '#ffffff15',
-              'width':            (el) => EDGE_STYLES[el.data('type')]?.width ?? 1,
-              'line-style':       (el) => EDGE_STYLES[el.data('type')]?.lineStyle ?? 'solid',
-              'curve-style':      'bezier',
+              'line-color':         (el) => EDGE_STYLES[el.data('type')]?.lineColor ?? '#ffffff15',
+              'width':              (el) => EDGE_STYLES[el.data('type')]?.width ?? 1,
+              'line-style':         (el) => EDGE_STYLES[el.data('type')]?.lineStyle ?? 'solid',
+              'curve-style':        'bezier',
               'target-arrow-shape': 'triangle',
               'target-arrow-color': (el) => EDGE_STYLES[el.data('type')]?.lineColor ?? '#ffffff15',
-              'arrow-scale':      0.7,
+              'arrow-scale':        0.6,
             },
           },
           {
             selector: 'edge.faded',
-            style: { opacity: 0.08 },
+            style: { opacity: 0.05 },
           },
         ],
 
@@ -157,15 +183,13 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
         }
       });
 
-      // ── hover tooltip — show label clearly on mouseover ───────────────
+      // ── hover — add/remove the .hovered class to reveal the label ──────
       cy.on('mouseover', 'node', (evt) => {
-        evt.target.style({ 'font-size': 12, 'border-color': '#ffffff55' });
+        evt.target.addClass('hovered');
       });
 
       cy.on('mouseout', 'node', (evt) => {
-        if (!evt.target.selected()) {
-          evt.target.style({ 'font-size': 10, 'border-color': 'rgba(255,255,255,0.15)' });
-        }
+        evt.target.removeClass('hovered');
       });
 
       cyRef.current = cy;
