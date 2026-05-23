@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import styles from './page.module.css';
+
+// load canvas animation client-side only (it accesses window/canvas)
+const HeroCanvas = dynamic(() => import('@/components/HeroCanvas'), { ssr: false });
 
 // small repos that comfortably fit within Groq's free-tier token limits
 const EXAMPLE_REPOS = [
@@ -73,6 +77,9 @@ export default function HomePage() {
 
       {/* ── hero ── */}
       <section className={styles.hero}>
+        {/* floating node graph canvas — sits behind the content */}
+        <HeroCanvas />
+
         <div className={styles.heroInner}>
           {/* eyebrow label — same monospace numbering as IDR */}
           <div className={styles.eyebrow}>
