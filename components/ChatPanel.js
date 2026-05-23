@@ -7,6 +7,127 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './ChatPanel.module.css';
 
+// ── Lightweight markdown renderer ───────────────────────────────────
+// No external library — handles the patterns Groq actually outputs:
+// **bold**, *italic*, `inline code`, ```code blocks```, - bullets, 1. numbered
+function renderInline(text) {
+  // process inline patterns: **bold**, *italic*, `code`
+  const parts = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // fenced inline code — match first
+    const codeMatch = remaining.match(/^(.*?)`([^`]+)`/);
+    const boldMatch  = remaining.match(/^(.*?)\*\*(.+?)\*\*/);
+    const italicMatch = remaining.match(/^(.*?)\*(.+?)\*/);
+
+    // pick whichever match starts earliest
+    const candidates = [
+      codeMatch   && { idx: codeMatch[1].length,   match: codeMatch,   type: 'code' },
+      boldMatch   && { idx: boldMatch[1].length,   match: boldMatch,   type: 'bold' },
+      italicMatch && { idx: italicMatch[1].length, match: italicMatch, type: 'italic' },
+    ].filter(Boolean);
+
+    if (candidates.length === 0) {
+      parts.push(<span key={key++}>{remaining}</span>);
+      break;
+    }
+
+    const earliest = candidates.reduce((a, b) => a.idx <= b.idx ? a : b);
+    const { match, type } = earliest;
+
+    // push any text before the match
+    if (match[1]) parts.push(<span key={key++}>{match[1]}</span>);
+
+    if (type === 'code') {
+      parts.push(<code key={key++} className={styles.inlineCode}>{match[2]}</code>);
+    } else if (type === 'bold') {
+      parts.push(<strong key={key++}>{match[2]}</strong>);
+    } else {
+      parts.push(<em key={key++}>{match[2]}</em>);
+    }
+
+    remaining = remaining.slice(match[1].length + match[0].length - match[1].length);
+  }
+
+  return parts;
+}
+
+// parse a full markdown string into React nodes
+function MarkdownMessage({ content }) {
+  if (!content) return null;
+
+  const lines = content.split('\n');
+  const output = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ── fenced code block ───────────────────────
+    if (line.startsWith('```')) {
+      const lang = line.slice(3).trim();
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      output.push(
+        <pre key={i} className={styles.codeBlock}>
+          {lang && <span className={styles.codeLang}>{lang}</span>}
+          <code>{codeLines.join('\n')}</code>
+        </pre>
+      );
+      i++; // skip closing ```
+      continue;
+    }
+
+    // ── bullet list item (− or *) ──────────────
+    if (/^(  )?[-*]\s/.test(line)) {
+      const indent = line.startsWith('  ');
+      const text = line.replace(/^\s*[-*]\s/, '');
+      output.push(
+        <div key={i} className={`${styles.listItem} ${indent ? styles.listItemIndent : ''}`}>
+          <span className={styles.bullet}>•</span>
+          <span>{renderInline(text)}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── numbered list item ──────────────────
+    const numMatch = line.match(/^(\d+)\. (.+)/);
+    if (numMatch) {
+      output.push(
+        <div key={i} className={styles.listItem}>
+          <span className={styles.bullet}>{numMatch[1]}.</span>
+          <span>{renderInline(numMatch[2])}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── blank line ────────────────────────
+    if (line.trim() === '') {
+      output.push(<div key={i} className={styles.spacer} />);
+      i++;
+      continue;
+    }
+
+    // ── normal paragraph line ────────────────
+    output.push(
+      <p key={i} className={styles.para}>{renderInline(line)}</p>
+    );
+    i++;
+  }
+
+  return <>{output}</>;
+}
+
 // starter prompts shown before the user types anything
 const STARTERS = [
   'What does this repo do?',
@@ -157,10 +278,18 @@ export default function ChatPanel({ graphSummary, selectedNode, fileMap }) {
             <span className={styles.roleTag}>
               {msg.role === 'user' ? 'You' : 'AI'}
             </span>
-            {/* render line breaks but keep it simple — no heavy markdown lib */}
-            <p className={styles.msgContent}>
-              {msg.content || (streaming && i === messages.length - 1 ? '▋' : '')}
-            </p>
+            {msg.role === 'user' ? (
+              // user messages are plain text — no markdown needed
+              <p className={styles.msgContent}>{msg.content}</p>
+            ) : (
+              // assistant messages go through the markdown renderer
+              <div className={styles.msgContent}>
+                {msg.content
+                  ? <MarkdownMessage content={msg.content} />
+                  : (streaming && i === messages.length - 1 ? <span className={styles.cursor}>▋</span> : null)
+                }
+              </div>
+            )}
           </div>
         ))}
 

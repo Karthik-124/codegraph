@@ -99,7 +99,7 @@
   font-size: 13.5px;
   line-height: 1.7;
   color: var(--text-primary);
-  white-space: pre-wrap;
+  /* no pre-wrap here — the markdown renderer handles whitespace */
   word-break: break-word;
 }
 
@@ -139,4 +139,85 @@
   line-height: 1.5;
   padding: 10px 12px;
   font-size: 13px;
+}
+
+/* ── Markdown element styles ──────────────────────────────── */
+
+/* paragraph inside assistant message */
+.para {
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* blank line spacer between paragraphs */
+.spacer {
+  height: 6px;
+}
+
+/* bullet / numbered list row */
+.listItem {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  line-height: 1.6;
+}
+
+.listItemIndent {
+  margin-left: 16px;
+}
+
+/* the • or number */
+.bullet {
+  color: var(--accent-2);
+  font-size: 12px;
+  flex-shrink: 0;
+  min-width: 14px;
+}
+
+/* inline code — `like this` */
+.inlineCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #a78bfa;
+}
+
+/* fenced code block ```...``` */
+.codeBlock {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c4b5fd;
+  margin: 4px 0;
+  position: relative;
+}
+
+/* language tag in top-right of code block */
+.codeLang {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: lowercase;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* blinking cursor while streaming */
+.cursor {
+  display: inline-block;
+  animation: blink 0.8s step-end infinite;
+  color: var(--accent-1);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
