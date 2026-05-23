@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeGraph — Visual Codebase Explorer
 
-## Getting Started
+> Paste any public GitHub repo URL → get an interactive knowledge graph of every file, function, and class → chat with the codebase using AI.
 
-First, run the development server:
+## What it does
+
+- **Fetches** all source files from any public GitHub repo via the GitHub Contents API
+- **Analyses** the code with Groq's Llama 3 70B to extract functions, classes, imports, and their relationships
+- **Renders** an interactive force-directed knowledge graph using Cytoscape.js
+- **Chat** — click any node and ask questions about that specific file/function, powered by streaming Groq responses
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Graph viz | Cytoscape.js (cose layout) |
+| AI | Groq API — Llama 3.3 70B |
+| Data source | GitHub Contents API |
+| Styling | Vanilla CSS (no Tailwind) |
+| Deploy | Vercel |
+
+## Getting started
+
+### 1. Clone & install
+
+```bash
+git clone https://github.com/your-username/codegraph.git
+cd codegraph
+npm install
+```
+
+### 2. Set up environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill in `.env.local`:
+
+| Variable | Where to get it |
+|---|---|
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) — free tier available |
+| `GITHUB_TOKEN` | [github.com/settings/tokens](https://github.com/settings/tokens) — no scopes needed for public repos |
+
+### 3. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 4. Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
 
-## Learn More
+Add `GROQ_API_KEY` and `GITHUB_TOKEN` in your Vercel project's Environment Variables settings.
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+  page.js                # Landing page — repo URL input
+  graph/
+    page.js              # Graph explorer — main UI
+  api/
+    fetch-repo/route.js  # GitHub API: walk repo tree, fetch files
+    analyze/route.js     # Groq: analyse code, return graph JSON
+    chat/route.js        # Groq: streaming chat with codebase context
+components/
+  GraphView.js           # Cytoscape.js interactive graph
+  ChatPanel.js           # Streaming chat sidebar
+  NodeDetail.js          # Node info overlay
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Limitations
 
-## Deploy on Vercel
+- Only analyses **public** repositories
+- File limit: 40 files max, 8 KB per file (to stay within Groq's context window)
+- Supports: `.js .jsx .ts .tsx .py .java .go .c .cpp .rs .rb .php`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Author
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built by **Polishetty Karthik** — [GitHub](https://github.com/Karthik-1245)
