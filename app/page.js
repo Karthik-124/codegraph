@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 
-// example repos shown under the input so users know what to expect
+// small repos that stay comfortably within Groq's free-tier token limits
+// (avoid mega repos like facebook/react or vercel/next.js — too many files)
 const EXAMPLE_REPOS = [
-  'https://github.com/vercel/next.js',
-  'https://github.com/facebook/react',
   'https://github.com/expressjs/express',
+  'https://github.com/fastify/fastify',
+  'https://github.com/axios/axios',
 ];
 
 export default function HomePage() {

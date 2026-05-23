@@ -18,7 +18,7 @@ const SKIP_DIRS = new Set([
 ]);
 
 const MAX_FILE_BYTES = 8 * 1024;   // 8 KB per file
-const MAX_FILES      = 40;         // total files cap so we don't blow Groq's context
+const MAX_FILES      = 25;         // keep well within Groq's free-tier token budget
 
 // parse "https://github.com/owner/repo" → { owner, repo }
 function parseGithubUrl(url) {
