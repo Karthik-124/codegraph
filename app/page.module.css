@@ -77,12 +77,16 @@
 /* ── hero ── */
 .hero {
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;   /* needed so canvas absolutely fills this section */
+  overflow: hidden;
 }
 
 .heroInner {
   max-width: 980px;
   margin: 0 auto;
   padding: 100px 32px 80px;
+  position: relative;   /* sit above the canvas */
+  z-index: 1;
 }
 
 .eyebrow {
