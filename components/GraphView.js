@@ -6,32 +6,38 @@
 import { useEffect, useRef } from 'react';
 import styles from './GraphView.module.css';
 
-// colour for each node type — matches the CSS design tokens
+// node colours — intentionally vivid so they read well on the dark canvas
 const NODE_COLORS = {
-  file:     '#7c3aed',
-  function: '#06b6d4',
-  class:    '#f59e0b',
-  import:   '#10b981',
+  file:     '#a78bfa', // soft purple
+  function: '#38bdf8', // sky blue
+  class:    '#fbbf24', // amber
+  import:   '#34d399', // emerald
 };
 
-// edge style for each relationship type
+// glow colour per type — slightly more saturated than the fill
+const NODE_GLOW = {
+  file:     '#7c3aed',
+  function: '#0284c7',
+  class:    '#d97706',
+  import:   '#059669',
+};
+
+// edge style per relationship — connecting lines that feel purposeful
 const EDGE_STYLES = {
-  contains: { lineColor: '#ffffff15', width: 1,   lineStyle: 'solid' },
-  calls:    { lineColor: '#06b6d455', width: 1.5, lineStyle: 'solid' },
-  imports:  { lineColor: '#10b98155', width: 1,   lineStyle: 'dashed' },
-  extends:  { lineColor: '#f59e0b55', width: 2,   lineStyle: 'solid' },
+  contains: { color: '#6366f140', width: 1,   dash: null  },
+  calls:    { color: '#38bdf870', width: 1.5, dash: null  },
+  imports:  { color: '#34d39960', width: 1,   dash: [6,3] },
+  extends:  { color: '#fbbf2470', width: 2,   dash: null  },
 };
 
 export default function GraphView({ nodes, edges, onNodeSelect }) {
   const containerRef = useRef(null);
-  const cyRef        = useRef(null); // holds the Cytoscape instance
+  const cyRef        = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || !nodes?.length) return;
 
-    // dynamic import keeps Cytoscape out of the SSR bundle entirely
     import('cytoscape').then(({ default: cytoscape }) => {
-      // tear down any existing instance before re-initialising
       if (cyRef.current) { cyRef.current.destroy(); }
 
       const cy = cytoscape({
@@ -49,7 +55,7 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
             },
           })),
           ...edges
-            .filter((e) => e.source && e.target) // drop any edge with missing refs
+            .filter((e) => e.source && e.target)
             .map((e, i) => ({
               data: {
                 id:     `e-${i}`,
@@ -60,122 +66,153 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
             })),
         ],
 
-        // ── visual style ──────────────────────────────────────────────
+        // ── style ─────────────────────────────────────────────────────
         style: [
           {
-            // base style for all nodes — no label by default to avoid clutter
+            // base — all nodes start with no label so non-file nodes stay clean
             selector: 'node',
             style: {
-              'background-color': (el) => NODE_COLORS[el.data('type')] ?? '#7c3aed',
-              'label':            '',          // hidden by default
-              'color':            '#e0e0ff',
-              'font-size':        9,
-              'font-family':      'Inter, system-ui, sans-serif',
-              'font-weight':      '500',
-              'text-valign':      'bottom',
-              'text-halign':      'center',
-              'text-margin-y':    5,
-              'text-max-width':   70,
-              'text-wrap':        'ellipsis',
-              // semi-transparent background behind the text so it doesn't bleed
-              'text-background-color':   '#0a0a0f',
-              'text-background-opacity': 0.75,
-              'text-background-padding': '2px',
-              'width':            (el) => el.data('type') === 'file' ? 26 : 16,
-              'height':           (el) => el.data('type') === 'file' ? 26 : 16,
-              'border-width':     1.5,
-              'border-color':     'rgba(255,255,255,0.12)',
-              'border-opacity':   1,
+              // fill with a two-stop radial gradient: bright centre → darker edge
+              'background-color':          (el) => NODE_COLORS[el.data('type')] ?? '#a78bfa',
+              'background-gradient-stop-colors': (el) => {
+                const c = NODE_COLORS[el.data('type')] ?? '#a78bfa';
+                return `${c} ${c}88`; // same hue, fade to 53% alpha at the edge
+              },
+              'background-gradient-stop-positions': '0 100',
+              'background-fill':           'radial-gradient',
+
+              // glow via shadow
+              'shadow-blur':    20,
+              'shadow-color':   (el) => NODE_GLOW[el.data('type')] ?? '#7c3aed',
+              'shadow-opacity': 0.6,
+              'shadow-offset-x': 0,
+              'shadow-offset-y': 0,
+
+              // border — thin white ring to separate node from background
+              'border-width':   1.5,
+              'border-color':   'rgba(255,255,255,0.25)',
+              'border-opacity': 1,
+
+              // size — file nodes are the hubs, everything else is smaller
+              'width':  (el) => el.data('type') === 'file' ? 32 : 18,
+              'height': (el) => el.data('type') === 'file' ? 32 : 18,
+
+              // label — hidden by default; only file nodes always show
+              'label':        '',
+              'color':        '#f0f0ff',
+              'font-size':    10,
+              'font-family':  'Inter, system-ui, sans-serif',
+              'font-weight':  '600',
+              'text-valign':  'bottom',
+              'text-halign':  'center',
+              'text-margin-y': 6,
+              'text-max-width': 80,
+              'text-wrap':    'ellipsis',
+              // pill background behind label so it never overlaps edges
+              'text-background-color':   '#0d0d1a',
+              'text-background-opacity': 0.85,
+              'text-background-padding': '3px',
+              'text-border-radius':      4,
             },
           },
           {
-            // file nodes always show their label — they're the main landmarks
+            // file nodes always show their label — they're the landmarks
             selector: 'node[type = "file"]',
             style: {
               'label':    'data(label)',
-              'font-size': 9,
+              'font-size': 10,
             },
           },
           {
-            // selected node — white ring and always show its label
+            // selected node — brighter ring + show label
             selector: 'node:selected',
             style: {
-              'label':         'data(label)',
-              'font-size':     10,
-              'border-width':  3,
-              'border-color':  '#ffffff',
+              'label':          'data(label)',
+              'font-size':      11,
+              'border-width':   2.5,
+              'border-color':   '#ffffff',
               'border-opacity': 1,
+              'shadow-opacity': 0.9,
+              'shadow-blur':    30,
             },
           },
           {
-            // nodes with the .hovered class show their label on mouseover
+            // hovered — reveal label and intensify glow
             selector: 'node.hovered',
             style: {
               'label':        'data(label)',
               'font-size':    10,
-              'border-color': '#ffffff55',
+              'border-color': 'rgba(255,255,255,0.6)',
+              'shadow-opacity': 0.85,
+              'shadow-blur':  28,
             },
           },
           {
-            // dim everything not in the selected neighbourhood
+            // faded — dim non-neighbours when a node is selected
             selector: 'node.faded',
-            style: { opacity: 0.2 },
+            style: {
+              opacity:         0.15,
+              'shadow-opacity': 0,
+            },
           },
           {
+            // edges — subtle but visible, colour-coded by type
             selector: 'edge',
             style: {
-              'line-color':         (el) => EDGE_STYLES[el.data('type')]?.lineColor ?? '#ffffff15',
-              'width':              (el) => EDGE_STYLES[el.data('type')]?.width ?? 1,
-              'line-style':         (el) => EDGE_STYLES[el.data('type')]?.lineStyle ?? 'solid',
-              'curve-style':        'bezier',
-              'target-arrow-shape': 'triangle',
-              'target-arrow-color': (el) => EDGE_STYLES[el.data('type')]?.lineColor ?? '#ffffff15',
-              'arrow-scale':        0.6,
+              'line-color':          (el) => EDGE_STYLES[el.data('type')]?.color ?? '#6366f140',
+              'width':               (el) => EDGE_STYLES[el.data('type')]?.width ?? 1,
+              'line-dash-pattern':   (el) => EDGE_STYLES[el.data('type')]?.dash ?? [],
+              'line-style':          (el) => EDGE_STYLES[el.data('type')]?.dash ? 'dashed' : 'solid',
+              'curve-style':         'bezier',
+              'target-arrow-shape':  'triangle',
+              'target-arrow-color':  (el) => EDGE_STYLES[el.data('type')]?.color ?? '#6366f140',
+              'arrow-scale':         0.55,
+              // subtle glow on edges too
+              'shadow-blur':    4,
+              'shadow-color':   (el) => EDGE_STYLES[el.data('type')]?.color ?? '#6366f1',
+              'shadow-opacity': 0.25,
+              'shadow-offset-x': 0,
+              'shadow-offset-y': 0,
             },
           },
           {
             selector: 'edge.faded',
-            style: { opacity: 0.05 },
+            style: { opacity: 0.04 },
           },
         ],
 
-        // ── layout ────────────────────────────────────────────────────
-        // "cose" (Compound Spring Embedder) gives a nice force-directed layout
+        // ── layout — tighter cose so nodes cluster naturally ──────────
         layout: {
-          name:             'cose',
-          animate:          true,
-          animationDuration: 800,
-          randomize:        true,
-          nodeRepulsion:    () => 8000,
-          idealEdgeLength:  () => 80,
-          gravity:          0.25,
-          numIter:          1000,
-          fit:              true,
-          padding:          40,
+          name:              'cose',
+          animate:           true,
+          animationDuration: 900,
+          animationEasing:   'ease-out',
+          randomize:         true,
+          // smaller repulsion → nodes sit closer together, graph feels denser
+          nodeRepulsion:     () => 4500,
+          idealEdgeLength:   () => 60,
+          edgeElasticity:    () => 100,
+          gravity:           0.4,
+          numIter:           1200,
+          fit:               true,
+          padding:           50,
+          componentSpacing:  60,
         },
 
-        // ── interaction settings ───────────────────────────────────────
-        minZoom: 0.2,
+        minZoom: 0.15,
         maxZoom: 4,
-        wheelSensitivity: 0.3,
+        wheelSensitivity: 0.25,
       });
 
-      // ── node click — highlight neighbours, call parent callback ───────
+      // ── tap node → highlight neighbourhood ────────────────────────
       cy.on('tap', 'node', (evt) => {
         const node = evt.target;
-        const nodeData = node.data();
-
-        // reset all fading first
         cy.elements().removeClass('faded');
-
-        // fade everything that isn't connected to the tapped node
-        const neighbourhood = node.closedNeighborhood();
-        cy.elements().not(neighbourhood).addClass('faded');
-
-        onNodeSelect?.(nodeData);
+        cy.elements().not(node.closedNeighborhood()).addClass('faded');
+        onNodeSelect?.(node.data());
       });
 
-      // ── click on background — reset fading ────────────────────────────
+      // ── tap background → reset ────────────────────────────────────
       cy.on('tap', (evt) => {
         if (evt.target === cy) {
           cy.elements().removeClass('faded');
@@ -183,7 +220,7 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
         }
       });
 
-      // ── hover — add/remove the .hovered class to reveal the label ──────
+      // ── hover → reveal label + boost glow ─────────────────────────
       cy.on('mouseover', 'node', (evt) => {
         evt.target.addClass('hovered');
       });
@@ -195,43 +232,43 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
       cyRef.current = cy;
     });
 
-    // cleanup when the component unmounts or data changes
     return () => { cyRef.current?.destroy(); };
   }, [nodes, edges, onNodeSelect]);
 
   return (
     <div className={styles.wrapper}>
-      {/* the div Cytoscape renders into — must have explicit dimensions */}
+      {/* canvas — the dot-grid background is painted purely in CSS */}
       <div ref={containerRef} className={styles.canvas} id="cy-canvas" />
 
-      {/* legend — bottom-left corner */}
+      {/* legend — bottom left */}
       <div className={styles.legend} aria-label="Graph legend">
         {Object.entries(NODE_COLORS).map(([type, color]) => (
           <span key={type} className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ background: color }} />
+            <span className={styles.legendDot} style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
             {type}
           </span>
         ))}
       </div>
 
-      {/* zoom controls — bottom-right corner */}
+      {/* zoom controls — bottom right */}
       <div className={styles.controls}>
         <button
           className="btn btn-ghost"
-          style={{ padding: '6px 10px', fontSize: 16 }}
-          onClick={() => cyRef.current?.zoom(cyRef.current.zoom() * 1.2)}
+          style={{ padding: '6px 12px', fontSize: 15 }}
+          onClick={() => cyRef.current?.zoom({ level: cyRef.current.zoom() * 1.25, renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 } })}
           aria-label="Zoom in"
         >+</button>
         <button
           className="btn btn-ghost"
-          style={{ padding: '6px 10px', fontSize: 16 }}
-          onClick={() => cyRef.current?.fit()}
-          aria-label="Fit graph"
+          style={{ padding: '6px 12px', fontSize: 15 }}
+          onClick={() => cyRef.current?.fit(undefined, 50)}
+          aria-label="Fit graph to screen"
+          title="Fit to screen"
         >⊡</button>
         <button
           className="btn btn-ghost"
-          style={{ padding: '6px 10px', fontSize: 16 }}
-          onClick={() => cyRef.current?.zoom(cyRef.current.zoom() * 0.8)}
+          style={{ padding: '6px 12px', fontSize: 15 }}
+          onClick={() => cyRef.current?.zoom({ level: cyRef.current.zoom() * 0.8, renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 } })}
           aria-label="Zoom out"
         >−</button>
       </div>
