@@ -113,13 +113,25 @@
   margin-bottom: 28px;
 }
 
-.heroTitle em {
+/* each word fades and slides up with its own delay via --d custom property */
+.word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(18px);
+  animation: wordIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+.wordAccent {
   font-style: normal;
-  /* gradient only on the italic word */
   background: linear-gradient(135deg, #a78bfa, #38bdf8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+@keyframes wordIn {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .heroCopy {
@@ -133,31 +145,34 @@
 
 /* ── input form ── */
 .form {
-  max-width: 600px;
+  max-width: 580px;
   margin-bottom: 24px;
 }
 
 .inputRow {
   display: flex;
-  align-items: center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  overflow: hidden;
+  align-items: stretch;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 4px;
+  background: rgba(10, 8, 20, 0.7);
   transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
 }
 
 .inputRow:focus-within {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.75);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12), 0 0 20px rgba(124, 58, 237, 0.08);
 }
 
 .inputPrefix {
   padding: 0 14px;
-  color: rgba(124, 58, 237, 0.7);
-  font-size: 14px;
+  color: rgba(124, 58, 237, 0.6);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
   user-select: none;
+  border-right: 1px solid rgba(124, 58, 237, 0.15);
 }
 
 .repoInput {
@@ -165,31 +180,34 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #e8e8f0;
+  color: #d4d4f0;
   font-family: 'DM Mono', monospace;
   font-size: 13px;
-  padding: 14px 0;
+  padding: 14px 16px;
+  min-width: 0;
 }
 
 .repoInput::placeholder {
-  color: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.15);
 }
 
 .submitBtn {
-  background: linear-gradient(135deg, #7c3aed, #5b6ee1);
+  background: #7c3aed;
   color: #fff;
   border: none;
-  padding: 14px 24px;
+  border-left: 1px solid rgba(124, 58, 237, 0.4);
+  padding: 0 28px;
   font-family: 'Syne', system-ui, sans-serif;
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
+  flex-shrink: 0;
 }
 
-.submitBtn:hover { opacity: 0.88; }
+.submitBtn:hover { background: #6d28d9; }
 
 .error {
   margin-top: 10px;
