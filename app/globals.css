@@ -1,5 +1,7 @@
-/* Google Fonts — Inter for UI, JetBrains Mono for code */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fonts loaded via <link> in layout.js:
+   Syne        — geometric display face for headings
+   IBM Plex Sans — neutral, technical body text
+   DM Mono     — monospaced labels, code, tags */
 
 /* ─── Design tokens ─────────────────────────────────────────────────── */
 :root {
@@ -51,9 +53,10 @@ html {
 body {
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -66,13 +69,14 @@ body {
 
 /* ─── Typography ─────────────────────────────────────────────────────── */
 h1, h2, h3, h4 {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
 code, pre, .mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'DM Mono', 'JetBrains Mono', monospace;
   font-size: 0.875em;
 }
 

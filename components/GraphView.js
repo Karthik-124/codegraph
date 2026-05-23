@@ -154,6 +154,20 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
             },
           },
           { selector: 'edge.faded', style: { opacity: 0.04 } },
+          {
+            // edge label — visible only on hover so it doesn't clutter the graph
+            selector: 'edge.edgeHovered',
+            style: {
+              'label':                    'data(type)',
+              'font-size':                9,
+              'font-family':              "'DM Mono', monospace",
+              'color':                    'rgba(255,255,255,0.55)',
+              'text-background-color':    '#0a0a14',
+              'text-background-opacity':  0.9,
+              'text-background-padding':  '3px',
+              'text-rotation':            'autorotate',
+            },
+          },
         ],
 
         // use preset layout (no animation) if we have saved positions,
@@ -211,6 +225,10 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
 
       cy.on('mouseover', 'node', (evt) => { evt.target.addClass('hovered'); });
       cy.on('mouseout',  'node', (evt) => { evt.target.removeClass('hovered'); });
+
+      // edge hover — reveal the relationship type label (calls / imports / etc.)
+      cy.on('mouseover', 'edge', (evt) => { evt.target.addClass('edgeHovered'); });
+      cy.on('mouseout',  'edge', (evt) => { evt.target.removeClass('edgeHovered'); });
 
       cyRef.current = cy;
     });
