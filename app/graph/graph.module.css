@@ -146,3 +146,45 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
 }
+
+/* ── size warning banner — shown below topbar ── */
+.warningBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(251, 191, 36, 0.1);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+  color: #fbbf24;
+  font-size: 12.5px;
+  flex-shrink: 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.warnClose {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #fbbf24;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.warnClose:hover { opacity: 1; }
+
+/* ── graph stats ── */
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+}
+
+/* colour each stat badge by node type */
+.statBadge[data-type="file"]     { border-color: #a78bfa44; color: #a78bfa; }
+.statBadge[data-type="function"] { border-color: #38bdf844; color: #38bdf8; }
+.statBadge[data-type="class"]    { border-color: #fbbf2444; color: #fbbf24; }
+.statBadge[data-type="import"]   { border-color: #34d39944; color: #34d399; }

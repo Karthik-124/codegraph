@@ -1,17 +1,24 @@
 'use client';
 
-// The main graph explorer page.
-// Flow: read ?repo= param → fetch files from GitHub → send to Groq → render graph.
-// State lives here and is passed down to GraphView and ChatPanel.
+// Graph explorer page — orchestrates the full pipeline:
+//   GitHub fetch → Groq analysis → graph render
+//
+// High-priority fixes in this version:
+//   • Size warning  — banner shown if repo has > 20 files (may be slow/fail)
+//   • Re-analyze    — button in topbar to re-run the full pipeline
+//   • Graph stats   — file/function/class/import counts in topbar
+//
+// Medium-priority additions:
+//   • Code viewer   — click a file node to see its source code
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import GraphView from '@/components/GraphView';
 import ChatPanel from '@/components/ChatPanel';
 import NodeDetail from '@/components/NodeDetail';
+import CodeViewer from '@/components/CodeViewer';
 import styles from './graph.module.css';
 
-// loading steps shown in order while the pipeline runs
 const LOADING_STEPS = [
   'Connecting to GitHub…',
   'Fetching repository files…',
@@ -21,37 +28,50 @@ const LOADING_STEPS = [
 
 export default function GraphPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const repoUrl = searchParams.get('repo');
+  const router       = useRouter();
+  const repoUrl      = searchParams.get('repo');
 
-  // overall pipeline state
-  const [phase, setPhase]       = useState('loading'); // loading | ready | error
+  const [phase, setPhase]       = useState('loading');
   const [loadStep, setLoadStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // data from the pipeline
-  const [repoMeta, setRepoMeta] = useState(null);   // { owner, repo, description, stars }
-  const [graphData, setGraphData] = useState(null); // { nodes, edges, summary }
-  const [fileMap, setFileMap]   = useState({});      // path → content, for chat context
+  const [repoMeta, setRepoMeta]   = useState(null);
+  const [graphData, setGraphData] = useState(null);
+  const [fileMap, setFileMap]     = useState({});
 
   // UI state
   const [selectedNode, setSelectedNode] = useState(null);
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen]         = useState(true);
+  const [codeViewerOpen, setCodeViewerOpen] = useState(false);
 
-  // run the full pipeline when the page mounts
+  // size warning shown when fetch-repo returns > 20 files
+  const [sizeWarning, setSizeWarning] = useState('');
+
+  // compute graph stats from nodes for topbar display
+  const stats = graphData
+    ? graphData.nodes.reduce((acc, n) => {
+        acc[n.type] = (acc[n.type] || 0) + 1;
+        return acc;
+      }, {})
+    : null;
+
   const runPipeline = useCallback(async () => {
     if (!repoUrl) { router.push('/'); return; }
 
     setPhase('loading');
     setLoadStep(0);
+    setErrorMsg('');
+    setSizeWarning('');
+    setSelectedNode(null);
+    setCodeViewerOpen(false);
 
     try {
-      // ── step 1: fetch repo files from GitHub ──────────────────────────
+      // ── step 1: fetch files from GitHub ────────────────────────────────
       setLoadStep(1);
       const fetchRes = await fetch('/api/fetch-repo', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoUrl }),
+        body:    JSON.stringify({ repoUrl }),
       });
 
       if (!fetchRes.ok) {
@@ -65,19 +85,22 @@ export default function GraphPage() {
         throw new Error('No analysable source files found in this repository.');
       }
 
-      setRepoMeta({ owner, repo, description, stars, language });
+      // show warning for larger repos — they may hit the token limit
+      if (files.length > 20) {
+        setSizeWarning(`${files.length} files found — only the first 25 will be analysed. Large repos may hit the free Groq token limit.`);
+      }
 
-      // build a path → content map so the chat route can pull relevant snippets
+      setRepoMeta({ owner, repo, description, stars, language });
       const map = {};
       files.forEach(({ path, content }) => { map[path] = content; });
       setFileMap(map);
 
-      // ── step 2: send files to Groq for graph generation ───────────────
+      // ── step 2: Groq analysis ──────────────────────────────────────────
       setLoadStep(2);
       const analyzeRes = await fetch('/api/analyze', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files, owner, repo }),
+        body:    JSON.stringify({ files, owner, repo }),
       });
 
       if (!analyzeRes.ok) {
@@ -99,12 +122,23 @@ export default function GraphPage() {
 
   useEffect(() => { runPipeline(); }, [runPipeline]);
 
-  // ── loading screen ────────────────────────────────────────────────────
+  // open code viewer only when a file node is selected
+  function handleNodeSelect(nodeData) {
+    setSelectedNode(nodeData);
+    // auto-open code viewer for file nodes that have content
+    if (nodeData?.type === 'file' && fileMap[nodeData.file]) {
+      setCodeViewerOpen(true);
+    } else {
+      setCodeViewerOpen(false);
+    }
+  }
+
+  // ── loading ────────────────────────────────────────────────────────────
   if (phase === 'loading') {
     return (
       <div className={styles.centered}>
         <div className={styles.loadCard}>
-          <div className={`${styles.loadLogo}`} aria-hidden="true">
+          <div className={styles.loadLogo} aria-hidden="true">
             <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
               <circle cx="26" cy="14" r="5" fill="url(#lg2)" />
               <circle cx="14" cy="34" r="5" fill="url(#lg2)" />
@@ -119,23 +153,16 @@ export default function GraphPage() {
               </defs>
             </svg>
           </div>
-
           <h2 className={styles.loadTitle}>Analysing repository…</h2>
           <p className={styles.loadRepo}>{decodeURIComponent(repoUrl || '')}</p>
-
-          {/* step list */}
           <ol className={styles.steps}>
             {LOADING_STEPS.map((step, i) => (
-              <li
-                key={step}
-                className={`${styles.step} ${
-                  i < loadStep  ? styles.stepDone :
-                  i === loadStep ? styles.stepActive :
-                  styles.stepPending
-                }`}
-              >
-                <span className={styles.stepDot} />
-                {step}
+              <li key={step} className={`${styles.step} ${
+                i < loadStep  ? styles.stepDone :
+                i === loadStep ? styles.stepActive :
+                styles.stepPending
+              }`}>
+                <span className={styles.stepDot} />{step}
               </li>
             ))}
           </ol>
@@ -144,16 +171,14 @@ export default function GraphPage() {
     );
   }
 
-  // ── error screen ──────────────────────────────────────────────────────
+  // ── error ──────────────────────────────────────────────────────────────
   if (phase === 'error') {
     return (
       <div className={styles.centered}>
         <div className={styles.loadCard}>
           <div style={{ fontSize: 40 }}>⚠️</div>
           <h2 className={styles.loadTitle}>Something went wrong</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: 8, textAlign: 'center' }}>
-            {errorMsg}
-          </p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 8, textAlign: 'center' }}>{errorMsg}</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
             <button className="btn btn-primary" onClick={runPipeline}>Retry</button>
             <button className="btn btn-ghost" onClick={() => router.push('/')}>← Back</button>
@@ -163,10 +188,10 @@ export default function GraphPage() {
     );
   }
 
-  // ── main explorer UI ──────────────────────────────────────────────────
+  // ── main explorer ──────────────────────────────────────────────────────
   return (
     <div className={styles.shell}>
-      {/* ── top bar ── */}
+      {/* ── topbar ── */}
       <header className={styles.topbar}>
         <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => router.push('/')}>
           ← Home
@@ -176,36 +201,71 @@ export default function GraphPage() {
           <span className="gradient-text" style={{ fontWeight: 600 }}>
             {repoMeta?.owner}/{repoMeta?.repo}
           </span>
-          {repoMeta?.language && (
-            <span className="badge">{repoMeta.language}</span>
-          )}
-          {repoMeta?.stars != null && (
-            <span className="badge">⭐ {repoMeta.stars.toLocaleString()}</span>
+          {repoMeta?.language && <span className="badge">{repoMeta.language}</span>}
+          {repoMeta?.stars != null && <span className="badge">⭐ {repoMeta.stars.toLocaleString()}</span>}
+
+          {/* graph stats — file/function/class/import counts */}
+          {stats && (
+            <div className={styles.stats}>
+              {Object.entries(stats).map(([type, count]) => (
+                <span key={type} className={`badge ${styles.statBadge}`} data-type={type}>
+                  {count} {type}{count !== 1 ? 's' : ''}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
-        <button
-          className="btn btn-ghost"
-          style={{ padding: '6px 12px', fontSize: 13 }}
-          onClick={() => setChatOpen((v) => !v)}
-          aria-label="Toggle chat panel"
-        >
-          {chatOpen ? 'Hide chat' : 'Show chat'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* re-analyze — re-runs the full pipeline */}
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '6px 12px', fontSize: 13 }}
+            onClick={runPipeline}
+            title="Re-fetch and re-analyse the repository"
+            aria-label="Re-analyze repository"
+          >
+            ↺ Re-analyze
+          </button>
+
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '6px 12px', fontSize: 13 }}
+            onClick={() => setChatOpen((v) => !v)}
+          >
+            {chatOpen ? 'Hide chat' : 'Show chat'}
+          </button>
+        </div>
       </header>
 
-      {/* ── body: graph + optional chat panel ── */}
+      {/* ── size warning banner ── */}
+      {sizeWarning && (
+        <div className={styles.warningBanner} role="alert">
+          ⚠️ {sizeWarning}
+          <button className={styles.warnClose} onClick={() => setSizeWarning('')}>✕</button>
+        </div>
+      )}
+
+      {/* ── body ── */}
       <div className={styles.body}>
-        {/* graph fills the remaining space */}
         <div className={styles.graphArea}>
           <GraphView
             nodes={graphData.nodes}
             edges={graphData.edges}
-            onNodeSelect={setSelectedNode}
+            onNodeSelect={handleNodeSelect}
           />
 
-          {/* node detail overlay — slides up from the bottom of the graph */}
-          {selectedNode && (
+          {/* code viewer — slides in from the left when a file node is selected */}
+          {codeViewerOpen && selectedNode?.type === 'file' && (
+            <CodeViewer
+              filePath={selectedNode.file}
+              content={fileMap[selectedNode.file]}
+              onClose={() => setCodeViewerOpen(false)}
+            />
+          )}
+
+          {/* node detail — bottom centre overlay for non-file nodes */}
+          {selectedNode && !codeViewerOpen && (
             <NodeDetail
               node={selectedNode}
               onClose={() => setSelectedNode(null)}
@@ -213,7 +273,6 @@ export default function GraphPage() {
           )}
         </div>
 
-        {/* chat panel — conditionally rendered */}
         {chatOpen && (
           <ChatPanel
             graphSummary={graphData.summary}
