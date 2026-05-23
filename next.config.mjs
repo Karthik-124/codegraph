@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  // turn off the floating "N" dev indicator — it gets in the way during dev
+  devIndicators: false,
 };
 
 export default nextConfig;
+

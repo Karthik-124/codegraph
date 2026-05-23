@@ -69,37 +69,32 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
         // ── style ─────────────────────────────────────────────────────
         style: [
           {
-            // base — all nodes start with no label so non-file nodes stay clean
+            // base style — solid fill + glow shadow gives depth without
+            // needing gradients (Cytoscape gradient support is unreliable
+            // when combined with function-based style values)
             selector: 'node',
             style: {
-              // fill with a two-stop radial gradient: bright centre → darker edge
-              'background-color':          (el) => NODE_COLORS[el.data('type')] ?? '#a78bfa',
-              'background-gradient-stop-colors': (el) => {
-                const c = NODE_COLORS[el.data('type')] ?? '#a78bfa';
-                return `${c} ${c}88`; // same hue, fade to 53% alpha at the edge
-              },
-              'background-gradient-stop-positions': '0 100',
-              'background-fill':           'radial-gradient',
+              'background-color': (el) => NODE_COLORS[el.data('type')] ?? '#a78bfa',
 
-              // glow via shadow
-              'shadow-blur':    20,
-              'shadow-color':   (el) => NODE_GLOW[el.data('type')] ?? '#7c3aed',
-              'shadow-opacity': 0.6,
+              // glow — this is what makes nodes look premium
+              'shadow-blur':     18,
+              'shadow-color':    (el) => NODE_GLOW[el.data('type')] ?? '#7c3aed',
+              'shadow-opacity':  0.55,
               'shadow-offset-x': 0,
               'shadow-offset-y': 0,
 
-              // border — thin white ring to separate node from background
+              // thin white ring separates the node from the dark background
               'border-width':   1.5,
-              'border-color':   'rgba(255,255,255,0.25)',
+              'border-color':   'rgba(255,255,255,0.2)',
               'border-opacity': 1,
 
-              // size — file nodes are the hubs, everything else is smaller
-              'width':  (el) => el.data('type') === 'file' ? 32 : 18,
-              'height': (el) => el.data('type') === 'file' ? 32 : 18,
+              // file nodes are hubs so they're larger
+              'width':  (el) => el.data('type') === 'file' ? 30 : 16,
+              'height': (el) => el.data('type') === 'file' ? 30 : 16,
 
-              // label — hidden by default; only file nodes always show
+              // label — off by default, file nodes always show it
               'label':        '',
-              'color':        '#f0f0ff',
+              'color':        '#e8e8ff',
               'font-size':    10,
               'font-family':  'Inter, system-ui, sans-serif',
               'font-weight':  '600',
@@ -108,23 +103,22 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
               'text-margin-y': 6,
               'text-max-width': 80,
               'text-wrap':    'ellipsis',
-              // pill background behind label so it never overlaps edges
-              'text-background-color':   '#0d0d1a',
-              'text-background-opacity': 0.85,
+              // pill behind label so it never overlaps edges or other nodes
+              'text-background-color':   '#0a0a14',
+              'text-background-opacity': 0.88,
               'text-background-padding': '3px',
-              'text-border-radius':      4,
             },
           },
           {
-            // file nodes always show their label — they're the landmarks
+            // file nodes always show their label — they're the main landmarks
             selector: 'node[type = "file"]',
             style: {
-              'label':    'data(label)',
+              'label':     'data(label)',
               'font-size': 10,
             },
           },
           {
-            // selected node — brighter ring + show label
+            // selected — bright white ring, always show label, boost glow
             selector: 'node:selected',
             style: {
               'label':          'data(label)',
@@ -133,25 +127,25 @@ export default function GraphView({ nodes, edges, onNodeSelect }) {
               'border-color':   '#ffffff',
               'border-opacity': 1,
               'shadow-opacity': 0.9,
-              'shadow-blur':    30,
+              'shadow-blur':    28,
             },
           },
           {
-            // hovered — reveal label and intensify glow
+            // hovered — reveal label and intensify glow slightly
             selector: 'node.hovered',
             style: {
-              'label':        'data(label)',
-              'font-size':    10,
-              'border-color': 'rgba(255,255,255,0.6)',
-              'shadow-opacity': 0.85,
-              'shadow-blur':  28,
+              'label':          'data(label)',
+              'font-size':      10,
+              'border-color':   'rgba(255,255,255,0.5)',
+              'shadow-opacity': 0.8,
+              'shadow-blur':    24,
             },
           },
           {
-            // faded — dim non-neighbours when a node is selected
+            // faded — dim non-neighbours when a node is tapped
             selector: 'node.faded',
             style: {
-              opacity:         0.15,
+              'opacity':        0.15,
               'shadow-opacity': 0,
             },
           },
