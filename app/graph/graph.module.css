@@ -4,7 +4,7 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg-base);
+  background: #080810; /* matches the graph canvas bg */
 }
 
 /* ── top navigation bar ── */
@@ -13,8 +13,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
+  background: rgba(10, 10, 20, 0.9);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   flex-shrink: 0;
   gap: 12px;
   z-index: 10;
