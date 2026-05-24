@@ -5,15 +5,11 @@ export const dynamic = 'force-dynamic';
 // Graph explorer page — orchestrates the full pipeline:
 //   GitHub fetch → Groq analysis → graph render
 //
-// High-priority fixes in this version:
-//   • Size warning  — banner shown if repo has > 20 files (may be slow/fail)
-//   • Re-analyze    — button in topbar to re-run the full pipeline
-//   • Graph stats   — file/function/class/import counts in topbar
-//
-// Medium-priority additions:
-//   • Code viewer   — click a file node to see its source code
+// useSearchParams() must live inside a component wrapped in <Suspense>.
+// We do that by splitting into GraphPageInner (the real logic) +
+// GraphPage (the exported page, which just wraps Inner in Suspense).
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import GraphView from '@/components/GraphView';
 import ChatPanel from '@/components/ChatPanel';
@@ -28,7 +24,8 @@ const LOADING_STEPS = [
   'Building knowledge graph…',
 ];
 
-export default function GraphPage() {
+// ── inner component — contains all useSearchParams() logic ───────────────────
+function GraphPageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
   const repoUrl      = searchParams.get('repo');
@@ -127,7 +124,6 @@ export default function GraphPage() {
   // open code viewer only when a file node is selected
   function handleNodeSelect(nodeData) {
     setSelectedNode(nodeData);
-    // auto-open code viewer for file nodes that have content
     if (nodeData?.type === 'file' && fileMap[nodeData.file]) {
       setCodeViewerOpen(true);
     } else {
@@ -206,7 +202,6 @@ export default function GraphPage() {
           {repoMeta?.language && <span className="badge">{repoMeta.language}</span>}
           {repoMeta?.stars != null && <span className="badge">⭐ {repoMeta.stars.toLocaleString()}</span>}
 
-          {/* graph stats — file/function/class/import counts */}
           {stats && (
             <div className={styles.stats}>
               {Object.entries(stats).map(([type, count]) => (
@@ -219,7 +214,6 @@ export default function GraphPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          {/* re-analyze — re-runs the full pipeline */}
           <button
             className="btn btn-ghost"
             style={{ padding: '6px 12px', fontSize: 13 }}
@@ -257,7 +251,6 @@ export default function GraphPage() {
             onNodeSelect={handleNodeSelect}
           />
 
-          {/* code viewer — slides in from the left when a file node is selected */}
           {codeViewerOpen && selectedNode?.type === 'file' && (
             <CodeViewer
               filePath={selectedNode.file}
@@ -266,7 +259,6 @@ export default function GraphPage() {
             />
           )}
 
-          {/* node detail — bottom centre overlay for non-file nodes */}
           {selectedNode && !codeViewerOpen && (
             <NodeDetail
               node={selectedNode}
@@ -284,5 +276,18 @@ export default function GraphPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ── exported page — wraps inner in Suspense (required by Next.js App Router) ─
+export default function GraphPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0f', color: '#9090b0', fontFamily: 'IBM Plex Sans, sans-serif' }}>
+        Loading…
+      </div>
+    }>
+      <GraphPageInner />
+    </Suspense>
   );
 }
