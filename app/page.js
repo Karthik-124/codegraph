@@ -77,7 +77,7 @@ export default function HomePage() {
 
       {/* ── hero ── */}
       <section className={styles.hero}>
-        {/* floating node graph canvas — sits behind the content */}
+        {/* floating node graph — canvas is injected by the component */}
         <HeroCanvas />
 
         <div className={styles.heroInner}>
