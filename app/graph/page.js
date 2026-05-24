@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 // Graph explorer page — orchestrates the full pipeline:
 //   GitHub fetch → Groq analysis → graph render
 //
