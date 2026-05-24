@@ -89,16 +89,14 @@ export default function HomePage() {
           </div>
 
           <h1 className={styles.heroTitle}>
-            <span className={styles.word} style={{ '--d': '0ms' }}>See inside</span>
+            <span className={styles.word} style={{ '--d': '0ms' }}>Understand any</span>
             <br />
-            <span className={styles.word} style={{ '--d': '120ms' }}>any{' '}</span>
-            <em className={`${styles.word} ${styles.wordAccent}`} style={{ '--d': '220ms' }}>codebase.</em>
+            <em className={`${styles.word} ${styles.wordAccent}`} style={{ '--d': '140ms' }}>codebase.</em>
           </h1>
 
           <p className={styles.heroCopy}>
-            Paste a public GitHub repo URL. CodeGraph fetches the source, runs it through
-            Llama&nbsp;3.3&nbsp;70B, and builds an interactive knowledge graph — every file,
-            function, and class, with edges showing how they connect. Then chat with it.
+            Paste a GitHub URL. Get a live knowledge graph — files, functions,
+            classes, and how they connect. Then ask questions with AI.
           </p>
 
           {/* ── input form ── */}
