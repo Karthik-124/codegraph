@@ -2,9 +2,5 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "env": {
-    "GROQ_API_KEY": "@groq_api_key",
-    "GITHUB_TOKEN": "@github_token"
-  }
+  "installCommand": "npm install"
 }
