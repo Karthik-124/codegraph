@@ -159,12 +159,19 @@ export default function HeroCanvas() {
         if (n.y > h + 20) n.y = -20;
       }
 
-      // ── draw edges (KNN) ────────────────────────────────────────────
+      // ── draw edges (KNN, deduplicated via Set) ───────────────────────
+      // KNN is asymmetric: A may list B as neighbor but B may not list A.
+      // The old j<=i skip silently dropped edges when the targeted node had
+      // a lower index than its neighbor. Fix: track drawn pairs in a Set.
+      const drawnPairs = new Set();
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         for (let k = 0; k < n.neighbors.length; k++) {
-          const j = n.neighbors[k];
-          if (j <= i) continue; // draw each edge once
+          const j   = n.neighbors[k];
+          // canonical key: smaller index first so each pair is unique
+          const key = Math.min(i, j) * 10000 + Math.max(i, j);
+          if (drawnPairs.has(key)) continue;
+          drawnPairs.add(key);
 
           const m = nodes[j];
           if (n.x < 0 || n.x > w || n.y < 0 || n.y > h) continue;
