@@ -77,7 +77,7 @@ export default function HomePage() {
 
       {/* ── hero ── */}
       <section className={styles.hero}>
-        {/* floating node graph canvas — sits behind the content */}
+        {/* floating node graph — canvas is injected by the component */}
         <HeroCanvas />
 
         <div className={styles.heroInner}>
@@ -89,7 +89,10 @@ export default function HomePage() {
           </div>
 
           <h1 className={styles.heroTitle}>
-            See inside<br />any <em>codebase.</em>
+            <span className={styles.word} style={{ '--d': '0ms' }}>See inside</span>
+            <br />
+            <span className={styles.word} style={{ '--d': '120ms' }}>any{' '}</span>
+            <em className={`${styles.word} ${styles.wordAccent}`} style={{ '--d': '220ms' }}>codebase.</em>
           </h1>
 
           <p className={styles.heroCopy}>
