@@ -267,13 +267,13 @@ function GraphPageInner() {
           )}
         </div>
 
-        {chatOpen && (
-          <ChatPanel
-            graphSummary={graphData.summary}
-            selectedNode={selectedNode}
-            fileMap={fileMap}
-          />
-        )}
+        {/* always mounted so chat history survives hide/show — visibility via CSS */}
+        <ChatPanel
+          graphSummary={graphData.summary}
+          selectedNode={selectedNode}
+          fileMap={fileMap}
+          visible={chatOpen}
+        />
       </div>
     </div>
   );

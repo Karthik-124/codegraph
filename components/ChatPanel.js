@@ -136,7 +136,7 @@ const STARTERS = [
   'Explain the most complex part',
 ];
 
-export default function ChatPanel({ graphSummary, selectedNode, fileMap }) {
+export default function ChatPanel({ graphSummary, selectedNode, fileMap, visible = true }) {
   const [messages, setMessages]  = useState([]);   // { role, content }
   const [input, setInput]        = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -230,7 +230,7 @@ export default function ChatPanel({ graphSummary, selectedNode, fileMap }) {
   }
 
   return (
-    <aside className={styles.panel}>
+    <aside className={styles.panel} style={visible ? {} : { display: 'none' }}>
       {/* ── header ── */}
       <div className={styles.header}>
         <span className="gradient-text" style={{ fontWeight: 600, fontSize: 14 }}>
