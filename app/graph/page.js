@@ -20,7 +20,7 @@ import styles from './graph.module.css';
 const LOADING_STEPS = [
   'Connecting to GitHub…',
   'Fetching repository files…',
-  'Sending code to Groq Llama 3…',
+  'Sending code to Groq GPT OSS 120B…',
   'Building knowledge graph…',
 ];
 
@@ -86,7 +86,7 @@ function GraphPageInner() {
 
       // show warning for larger repos — they may hit the token limit
       if (files.length > 20) {
-        setSizeWarning(`${files.length} files found — only the first 25 will be analysed. Large repos may hit the free Groq token limit.`);
+        setSizeWarning(`${files.length} files found — only the first 20 will be analysed. Large repos may hit the free Groq token limit.`);
       }
 
       setRepoMeta({ owner, repo, description, stars, language });
