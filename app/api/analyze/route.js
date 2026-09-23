@@ -1,21 +1,21 @@
 // Route: POST /api/analyze
-// Takes the fetched repo files and asks Groq (Llama 3 70B) to analyse them.
+// Takes the fetched repo files and asks Groq (GPT OSS 120B) to analyse them.
 // Returns a graph payload: { nodes: [...], edges: [...] } that Cytoscape can render.
 //
 // Node types:  file | function | class | import
 // Edge types:  contains | calls | imports | extends
 //
-// Token budget: Groq free tier is 12,000 TPM for llama-3.3-70b-versatile.
-// We keep well under that by: capping files at 25, lines per file at 60,
+// Token budget: Groq free tier for openai/gpt-oss-120b is ~8,000 TPM.
+// We keep well under that by: capping files at 20, lines per file at 50,
 // and using a concise system prompt.
 
 import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// max files and lines we'll include in the prompt — keeps us under 12k TPM
-const MAX_FILES_TO_ANALYSE = 25;
-const MAX_LINES_PER_FILE   = 60;
+// max files and lines we'll include in the prompt — keeps us under 8k TPM
+const MAX_FILES_TO_ANALYSE = 20;
+const MAX_LINES_PER_FILE   = 50;
 
 // concise system prompt — every token saved here is a token for actual code
 const SYSTEM_PROMPT = `You are a code analysis engine. Analyse the given source files and return ONLY valid JSON:
@@ -56,19 +56,19 @@ export async function POST(request) {
   const estimatedTokens = Math.ceil((SYSTEM_PROMPT.length + userMessage.length) / 4);
   console.log(`[analyze] ~${estimatedTokens} tokens estimated for ${filesToAnalyse.length} files`);
 
-  if (estimatedTokens > 11000) {
+  if (estimatedTokens > 7000) {
     console.warn('[analyze] token estimate is high — truncation may be needed');
   }
 
   try {
     const completion = await groq.chat.completions.create({
-      model:       'llama-3.3-70b-versatile',
+      model:       'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
       temperature: 0.1,   // low temp → deterministic JSON output
-      max_tokens:  3000,  // leave headroom within the TPM window
+      max_tokens:  2000,  // leave headroom within the TPM window
     });
 
     const raw = completion.choices[0]?.message?.content ?? '';
@@ -101,7 +101,7 @@ export async function POST(request) {
     // surface a friendlier message for the common token-limit error
     const isTokenError = err.message?.includes('413') || err.message?.includes('rate_limit');
     const userMessage2 = isTokenError
-      ? 'Repository is too large for the free Groq tier. Try a smaller repo (under ~30 files).'
+      ? 'Repository is too large for the free Groq tier. Try a smaller repo (under ~20 files).'
       : 'Groq API error: ' + err.message;
 
     return Response.json({ error: userMessage2 }, { status: 500 });

@@ -8,7 +8,7 @@ import styles from './page.module.css';
 // load canvas animation client-side only (it accesses window/canvas)
 const HeroCanvas = dynamic(() => import('@/components/HeroCanvas'), { ssr: false });
 
-// small repos that comfortably fit within Groq's free-tier token limits
+// small repos that comfortably fit within Groq's free-tier rate limits
 const EXAMPLE_REPOS = [
   { label: 'expressjs/express', url: 'https://github.com/expressjs/express' },
   { label: 'fastify/fastify',   url: 'https://github.com/fastify/fastify'   },
@@ -18,7 +18,7 @@ const EXAMPLE_REPOS = [
 const HOW_IT_WORKS = [
   { n: '01', label: 'Paste URL',   detail: 'Any public GitHub repo' },
   { n: '02', label: 'Fetch Files', detail: 'GitHub Contents API'    },
-  { n: '03', label: 'LLM Analysis', detail: 'Groq Llama 3.3 70B'   },
+  { n: '03', label: 'LLM Analysis', detail: 'Groq GPT OSS 120B'    },
   { n: '04', label: 'Graph',       detail: 'Cytoscape.js render'    },
 ];
 
@@ -209,8 +209,8 @@ export default function HomePage() {
               {
                 n: '02',
                 title: 'LLM-Powered Analysis',
-                body: "Groq's Llama 3.3 70B reads your source files and extracts a structured graph — nodes, edges, and a plain-English codebase summary — in seconds.",
-                tags: ['Groq API', 'Llama 3.3 70B'],
+                body: "Groq's GPT OSS 120B reads your source files and extracts a structured graph — nodes, edges, and a plain-English codebase summary — in seconds.",
+                tags: ['Groq API', 'GPT OSS 120B'],
               },
               {
                 n: '03',
@@ -259,7 +259,7 @@ export default function HomePage() {
             <span className={`${styles.sectionTag} mono`}>CGR_004 / Stack</span>
           </div>
           <div className={styles.stackPills}>
-            {['Next.js 16', 'Cytoscape.js', 'Groq API', 'Llama 3.3 70B', 'GitHub API', 'IBM Plex Sans', 'Syne'].map((s) => (
+            {['Next.js 16', 'Cytoscape.js', 'Groq API', 'GPT OSS 120B', 'GitHub API', 'IBM Plex Sans', 'Syne'].map((s) => (
               <span key={s} className={`${styles.stackPill} mono`}>{s}</span>
             ))}
           </div>

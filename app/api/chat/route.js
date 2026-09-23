@@ -45,7 +45,7 @@ export async function POST(request) {
 
   // stream the response back so the UI can render tokens as they arrive
   const stream = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     messages: [
       { role: 'system', content: systemPrompt },
       ...messages,
