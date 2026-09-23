@@ -56,16 +56,40 @@ export async function POST(request) {
   });
 
   // convert Groq's async iterator into a ReadableStream the browser can consume
+  // also strip any <think>...</think> reasoning blocks before sending to client
   const readableStream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let buffer = '';
+      let insideThink = false;
+
       try {
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            // send each token as a plain text chunk
-            controller.enqueue(encoder.encode(delta));
+          if (!delta) continue;
+
+          buffer += delta;
+
+          // suppress <think>...</think> reasoning tokens from being shown to user
+          if (buffer.includes('<think>')) insideThink = true;
+          if (insideThink) {
+            if (buffer.includes('</think>')) {
+              // emit everything after the closing tag
+              const after = buffer.split('</think>').pop() ?? '';
+              insideThink = false;
+              buffer = '';
+              if (after) controller.enqueue(encoder.encode(after));
+            }
+            // still inside think block — don't emit yet
+            continue;
           }
+
+          controller.enqueue(encoder.encode(buffer));
+          buffer = '';
+        }
+        // flush any remaining buffer
+        if (buffer && !insideThink) {
+          controller.enqueue(encoder.encode(buffer));
         }
       } finally {
         controller.close();

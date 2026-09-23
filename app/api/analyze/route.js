@@ -18,7 +18,7 @@ const MAX_FILES_TO_ANALYSE = 20;
 const MAX_LINES_PER_FILE   = 50;
 
 // concise system prompt — every token saved here is a token for actual code
-const SYSTEM_PROMPT = `You are a code analysis engine. Analyse the given source files and return ONLY valid JSON:
+const SYSTEM_PROMPT = `You are a code analysis engine. Analyse the given source files and return ONLY valid JSON with this exact shape:
 
 {
   "nodes": [
@@ -30,7 +30,7 @@ const SYSTEM_PROMPT = `You are a code analysis engine. Analyse the given source 
   "summary": "2-3 sentences about what this codebase does"
 }
 
-Rules: one node per file (type=file); extract key functions/classes/imports; max 60 nodes total; edge source/target must exist; return ONLY the JSON, no markdown.`;
+Rules: one node per file (type=file); extract key functions/classes/imports; max 60 nodes total; edge source/target must exist; return ONLY the JSON object, no markdown, no explanation, no thinking.`;
 
 export async function POST(request) {
   const { files, owner, repo } = await request.json();
@@ -69,12 +69,21 @@ export async function POST(request) {
       ],
       temperature: 0.1,   // low temp → deterministic JSON output
       max_tokens:  2000,  // leave headroom within the TPM window
+      response_format: { type: 'json_object' }, // force clean JSON output
     });
 
     const raw = completion.choices[0]?.message?.content ?? '';
 
+    // Strip reasoning/thinking blocks (e.g. <think>...</think>) that some models output
+    const stripped = raw
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+
     // strip any accidental markdown fences the model added
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleaned = stripped
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
     let graph;
     try {
